@@ -25,11 +25,11 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
         }
 
         pub fn insert(self: *Self, element: T) void {
-            return self.root.insert(element);
+            return self.root.insert(self.comparator, element);
         }
 
         pub fn contains(self: *Self, element: T) bool {
-            return self.root.contains(element, self.comparator);
+            return self.root.contains(self.comparator, element);
         }
 
         pub fn deinit(self: *Self) void {
@@ -52,12 +52,16 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                 return node;
             }
 
-            pub fn insert(self: *Node, element: T) void {
+            pub fn insert(self: *Node, comparator: Comparator, element: T) void {
                 if (self.values.len < self.values.capacity()) {
                     for (self.values.slice(), 0..) |value, i| {
-                        if (element <= value) {
-                            self.values.insert(i, element) catch unreachable;
-                            return;
+                        switch (comparator(element, value)) {
+                            Comparison.Lesser => {
+                                self.values.insert(i, element) catch unreachable;
+                                return;
+                            },
+                            Comparison.Equal => {},
+                            Comparison.Greater => {},
                         }
                     }
                     self.values.append(element) catch unreachable;
@@ -65,7 +69,7 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                 }
             }
 
-            pub fn contains(self: Node, element: T, comparator: Comparator) bool {
+            pub fn contains(self: Node, comparator: Comparator, element: T) bool {
                 for (self.values.slice()) |value| {
                     switch (comparator(element, value)) {
                         Comparison.Equal => return true,
