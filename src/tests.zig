@@ -51,3 +51,21 @@ test "Can insert various elements out of order" {
     try testing.expect(tree.contains(1));
     try testing.expect(tree.contains(2));
 }
+
+test "Can overflow the root node" {
+    var tree = try BTree.init(allocator, comparator);
+    defer tree.deinit();
+
+    tree.insert(1);
+    tree.insert(2);
+    tree.insert(3);
+    tree.insert(4);
+    tree.insert(5);
+    tree.insert(6);
+    try testing.expect(tree.contains(0));
+    try testing.expect(tree.contains(1));
+    try testing.expect(tree.contains(2));
+    try testing.expect(tree.contains(3));
+    try testing.expect(tree.contains(4));
+    try testing.expect(tree.contains(5));
+}

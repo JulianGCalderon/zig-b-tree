@@ -53,14 +53,16 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
             }
 
             pub fn insert(self: *Node, element: T) void {
-                var dest: usize = 0;
-                for (self.values.slice()) |value| {
-                    if (element <= value) {
-                        break;
+                if (self.values.len < self.values.capacity()) {
+                    for (self.values.slice(), 0..) |value, i| {
+                        if (element <= value) {
+                            self.values.insert(i, element) catch unreachable;
+                            return;
+                        }
                     }
-                    dest += 1;
+                    self.values.append(element) catch unreachable;
+                    return;
                 }
-                self.values.insert(dest, element) catch unreachable;
             }
 
             pub fn contains(self: Node, element: T, comparator: Comparator) bool {
