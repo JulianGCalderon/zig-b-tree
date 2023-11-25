@@ -75,10 +75,6 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
             pub fn insert(self: *Node, element: T) Error!void {
                 if (self.isLeaf()) {
                     try self.insertInNode(element);
-
-                    if (self.isFull()) {
-                        try self.split();
-                    }
                 } else {
                     try self.insertInChild(element);
                 }
@@ -90,16 +86,21 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                 for (self.values.slice(), 0..) |value, i| {
                     switch (self.comparator(element, value)) {
                         Comparison.Lesser => {
-                            return self.values.insert(i, element) catch unreachable;
+                            self.values.insert(i, element) catch unreachable;
+                            break;
                         },
                         Comparison.Equal => {
                             return Error.DuplicateElement;
                         },
                         else => {},
                     }
+                } else {
+                    self.values.append(element) catch unreachable;
                 }
 
-                self.values.append(element) catch unreachable;
+                if (self.isFull()) {
+                    try self.split();
+                }
             }
 
             /// Performs an ordered insert of the element in the corresponding
@@ -115,8 +116,9 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                         },
                         else => {},
                     }
+                } else {
+                    try self.lastChild().insert(element);
                 }
-                try self.lastChild().insert(element);
             }
 
             /// Splits the node in two, and inserts the right subnode as sibling
