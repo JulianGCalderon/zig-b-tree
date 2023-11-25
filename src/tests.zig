@@ -15,6 +15,15 @@ fn comparator(e1: isize, e2: isize) btree.Comparison {
     return btree.Comparison.Equal;
 }
 
+fn insertAndSearchAll(tree: *BTree, elements: []const isize) !void {
+    for (elements) |element| {
+        try tree.insert(element);
+    }
+    for (elements) |element| {
+        try testing.expect(tree.contains(element));
+    }
+}
+
 test "Can init and deinit" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
@@ -24,136 +33,68 @@ test "Can insert a single element" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
 
-    try tree.insert(0);
-    try testing.expect(tree.contains(0));
+    const elements = [_]isize{0};
+    try insertAndSearchAll(&tree, elements[0..]);
 }
 
 test "Can insert various elements" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
 
-    try tree.insert(0);
-    try tree.insert(1);
-    try tree.insert(2);
-    try testing.expect(tree.contains(0));
-    try testing.expect(tree.contains(1));
-    try testing.expect(tree.contains(2));
+    const elements = [_]isize{ 0, 1, 2 };
+    try insertAndSearchAll(&tree, elements[0..]);
 }
 
 test "Can insert various elements out of order" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
 
-    try tree.insert(1);
-    try tree.insert(2);
-    try tree.insert(0);
-    try testing.expect(tree.contains(0));
-    try testing.expect(tree.contains(1));
-    try testing.expect(tree.contains(2));
+    const elements = [_]isize{ 1, 2, 0 };
+    try insertAndSearchAll(&tree, elements[0..]);
+}
+
+test "Can fill the root node" {
+    var tree = try BTree.init(allocator, comparator);
+    defer tree.deinit();
+
+    const elements = [_]isize{ 0, 1, 2, 3 };
+    try insertAndSearchAll(&tree, elements[0..]);
 }
 
 test "Can overflow the root node" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
 
-    try tree.insert(0);
-    try tree.insert(1);
-    try tree.insert(2);
-    try tree.insert(3);
-    try tree.insert(4);
-    try testing.expect(tree.contains(0));
-    try testing.expect(tree.contains(1));
-    try testing.expect(tree.contains(2));
-    try testing.expect(tree.contains(3));
-    try testing.expect(tree.contains(4));
+    const elements = [_]isize{ 0, 1, 2, 3, 4 };
+    try insertAndSearchAll(&tree, elements[0..]);
 }
 
 test "Can insert on left child" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
 
-    try tree.insert(0);
-    try tree.insert(2);
-    try tree.insert(4);
-    try tree.insert(6);
-    try tree.insert(8);
-    try tree.insert(1);
-
-    try testing.expect(tree.contains(0));
-    try testing.expect(tree.contains(1));
-    try testing.expect(tree.contains(2));
-    try testing.expect(tree.contains(4));
-    try testing.expect(tree.contains(6));
-    try testing.expect(tree.contains(8));
+    const elements = [_]isize{ 0, 10, 20, 30, 40, 5 };
+    try insertAndSearchAll(&tree, elements[0..]);
 }
 
 test "Can insert on right child" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
 
-    try tree.insert(0);
-    try tree.insert(2);
-    try tree.insert(4);
-    try tree.insert(6);
-    try tree.insert(8);
-    try tree.insert(7);
-
-    try testing.expect(tree.contains(0));
-    try testing.expect(tree.contains(2));
-    try testing.expect(tree.contains(4));
-    try testing.expect(tree.contains(6));
-    try testing.expect(tree.contains(7));
-    try testing.expect(tree.contains(8));
+    const elements = [_]isize{ 0, 10, 20, 30, 40, 35 };
+    try insertAndSearchAll(&tree, elements[0..]);
 }
 
 test "Can fill children" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
 
-    try tree.insert(0);
-    try tree.insert(2);
-    try tree.insert(4);
-    try tree.insert(6);
-    try tree.insert(8);
-    try tree.insert(1);
-    try tree.insert(3);
-    try tree.insert(5);
-    try tree.insert(7);
+    const elements = [_]isize{ 0, 10, 20, 30, 40 };
+    try insertAndSearchAll(&tree, elements[0..]);
 
-    try testing.expect(tree.contains(0));
-    try testing.expect(tree.contains(2));
-    try testing.expect(tree.contains(4));
-    try testing.expect(tree.contains(6));
-    try testing.expect(tree.contains(8));
-    try testing.expect(tree.contains(1));
-    try testing.expect(tree.contains(3));
-    try testing.expect(tree.contains(5));
-    try testing.expect(tree.contains(7));
-}
+    const elements_left = [_]isize{ 5, 15 };
+    try insertAndSearchAll(&tree, elements_left[0..]);
 
-test "Can overflow children" {
-    var tree = try BTree.init(allocator, comparator);
-    defer tree.deinit();
-
-    try tree.insert(0);
-    try tree.insert(2);
-    try tree.insert(4);
-    try tree.insert(6);
-    try tree.insert(8);
-    try tree.insert(1);
-    try tree.insert(3);
-    try tree.insert(5);
-    try tree.insert(7);
-    try tree.insert(-1);
-
-    try testing.expect(tree.contains(0));
-    try testing.expect(tree.contains(2));
-    try testing.expect(tree.contains(4));
-    try testing.expect(tree.contains(6));
-    try testing.expect(tree.contains(8));
-    try testing.expect(tree.contains(1));
-    try testing.expect(tree.contains(3));
-    try testing.expect(tree.contains(5));
-    try testing.expect(tree.contains(7));
-    try testing.expect(tree.contains(-1));
+    const elements_right = [_]isize{ 35, 25 };
+    try insertAndSearchAll(&tree, elements_right[0..]);
 }

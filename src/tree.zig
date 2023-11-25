@@ -7,6 +7,10 @@ pub const Comparison = enum {
     Equal,
 };
 
+pub const Error = error{
+    DuplicateElement,
+} || Allocator.Error;
+
 pub fn BTree(comptime T: type, comptime order: usize) type {
     return struct {
         const Self = @This();
@@ -16,7 +20,7 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
         comparator: *const fn (T, T) Comparison,
         root: *Node,
 
-        pub fn init(allocator: Allocator, comparator: Comparator) !Self {
+        pub fn init(allocator: Allocator, comparator: Comparator) Error!Self {
             return Self{
                 .allocator = allocator,
                 .comparator = comparator,
@@ -42,18 +46,20 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
 
             allocator: Allocator,
             comparator: Comparator,
+
             values: ValueArray,
             childs: ChildArray,
             parent: ?*Node,
 
-            pub fn init(allocator: Allocator, comparator: Comparator) Allocator.Error!*Node {
+            pub fn init(allocator: Allocator, comparator: Comparator) Error!*Node {
                 const node = try allocator.create(Node);
 
                 node.allocator = allocator;
                 node.comparator = comparator;
+                node.parent = null;
+
                 node.values = ValueArray.init(0) catch unreachable;
                 node.childs = ChildArray.init(0) catch unreachable;
-                node.parent = null;
 
                 return node;
             }
@@ -66,99 +72,149 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                 self.allocator.destroy(self);
             }
 
-            pub fn insert(self: *Node, element: T) Allocator.Error!void {
-                try self.insertLocal(element);
+            pub fn insert(self: *Node, element: T) Error!void {
+                if (self.isLeaf()) {
+                    try self.insertInNode(element);
 
-                if (self.values.len == self.values.capacity()) {
-                    const sibling_separator = try self.split();
-                    const separator = sibling_separator[0];
-                    const sibling = sibling_separator[1];
-
-                    if (self.parent == null) {
-                        try self.split_root(separator, sibling);
-                    } else {
-                        try self.parent.insert_child(separator, sibling);
+                    if (self.isFull()) {
+                        try self.split();
                     }
+                } else {
+                    try self.insertInChild(element);
                 }
             }
 
-            pub fn insertLocal(self: *Node, element: T) Allocator.Error!void {
+            /// Performs an ordered insert of the element in the current node.
+            /// Panics if there is no space left
+            fn insertInNode(self: *Node, element: T) Error!void {
                 for (self.values.slice(), 0..) |value, i| {
                     switch (self.comparator(element, value)) {
                         Comparison.Lesser => {
-                            if (self.childs.len > i) {
-                                try self.childs.get(i).insert(element);
-                            } else {
-                                self.values.insert(i, element) catch unreachable;
-                            }
-                            return;
+                            return self.values.insert(i, element) catch unreachable;
                         },
-                        Comparison.Equal => {},
-                        Comparison.Greater => {},
+                        Comparison.Equal => {
+                            return Error.DuplicateElement;
+                        },
+                        else => {},
                     }
                 }
+                self.values.append(element) catch unreachable;
+            }
 
-                if (self.childs.len > 0) {
-                    try self.childs.get(self.childs.len - 1).insert(element);
+            /// Performs an ordered insert of the element in the corresponding
+            /// child.
+            fn insertInChild(self: *Node, element: T) Error!void {
+                for (self.values.slice(), 0..) |value, i| {
+                    switch (self.comparator(element, value)) {
+                        Comparison.Lesser => {
+                            return self.childs.get(i).insert(element);
+                        },
+                        Comparison.Equal => {
+                            return Error.DuplicateElement;
+                        },
+                        else => {},
+                    }
+                }
+                try self.lastChild().insert(element);
+            }
+
+            /// Splits the node in two, and inserts the right subnode as sibling
+            /// into the parent. The current node will be the left subnode
+            ///
+            /// If there is no parent, a new right subnode will be alloced, and
+            /// the current node will behave as parent of both.
+            pub fn split(self: *Node) Error!void {
+                const separatorIndex = self.values.len / 2;
+                const separator = self.values.get(separatorIndex);
+
+                const right_node = try Node.init(self.allocator, self.comparator);
+                right_node.values.appendSlice(self.values.slice()[separatorIndex + 1 ..]) catch unreachable;
+
+                self.values.resize(separatorIndex) catch unreachable;
+
+                if (self.parent) |parent| {
+                    return parent.insertChild(separator, right_node);
                 } else {
-                    self.values.append(element) catch unreachable;
+                    return self.split_root(separator, right_node);
                 }
             }
 
-            pub fn split(self: *Node) !struct { T, *Node } {
-                const middleIndex = self.values.len / 2;
-                const middle = self.values.get(middleIndex);
+            /// A new self node will be cloned from self, and the current node
+            /// will behave as parent of both subnodes, with the given
+            /// separator.
+            pub fn split_root(self: *Node, separator: T, right_node: *Node) Error!void {
+                const left_node = try Node.init(self.allocator, self.comparator);
+                left_node.* = self.*;
 
-                var sibling = try Node.init(self.allocator, self.comparator);
-                sibling.values.appendSlice(self.values.slice()[middleIndex + 1 ..]) catch unreachable;
-
-                self.values.resize(middleIndex) catch unreachable;
-
-                return .{ middle, sibling };
-            }
-
-            pub fn split_root(self: *Node, separator: T, sibling: *Node) Allocator.Error!void {
-                var child = try Node.init(self.allocator, self.comparator);
-                child.parent = self;
-                child.values = self.values;
-
-                sibling.parent = self;
+                right_node.parent = self;
+                left_node.parent = self;
 
                 self.values.resize(0) catch unreachable;
                 self.values.append(separator) catch unreachable;
-                self.childs.append(child) catch unreachable;
-                self.childs.append(sibling) catch unreachable;
+
+                self.childs.resize(0) catch unreachable;
+                self.childs.append(left_node) catch unreachable;
+                self.childs.append(right_node) catch unreachable;
             }
 
-            pub fn insert_child(self: *Node, separator: T, sibling: *Node) Allocator.Error!void {
-                _ = sibling;
-                _ = separator;
+            pub fn insertChild(self: *Node, separator: T, right_node: *Node) Error!void {
                 _ = self;
-
-                // needs to insert sibling in the parent, next to caller node,
-                // with separator in between
+                _ = right_node;
+                _ = separator;
             }
 
-            pub fn contains(self: Node, element: T) bool {
-                for (self.values.slice(), 0..) |value, i| {
+            pub fn contains(self: *Node, element: T) bool {
+                if (self.isLeaf()) {
+                    return self.containsInNode(element);
+                } else {
+                    return self.containsInChildren(element);
+                }
+            }
+
+            /// Searches for the given element in the current leaf node.
+            pub fn containsInNode(self: *Node, element: T) bool {
+                for (self.values.slice()) |value| {
                     switch (self.comparator(element, value)) {
                         Comparison.Equal => {
                             return true;
                         },
                         Comparison.Lesser => {
-                            if (self.childs.len > i) {
-                                return self.childs.get(i).contains(element);
-                            }
                             return false;
                         },
                         Comparison.Greater => {},
                     }
                 }
 
-                if (self.childs.len > 0) {
-                    return self.childs.get(self.childs.len - 1).contains(element);
-                }
                 return false;
+            }
+
+            /// Searches in order for the given in the current node and its subnodes.
+            pub fn containsInChildren(self: *Node, element: T) bool {
+                for (self.values.slice(), 0..) |value, i| {
+                    switch (self.comparator(element, value)) {
+                        Comparison.Equal => {
+                            return true;
+                        },
+                        Comparison.Lesser => {
+                            return self.childs.get(i).contains(element);
+                        },
+                        Comparison.Greater => {},
+                    }
+                }
+
+                return self.lastChild().contains(element);
+            }
+
+            fn isLeaf(self: *Node) bool {
+                return self.childs.len == 0;
+            }
+
+            fn lastChild(self: *Node) *Node {
+                return self.childs.get(self.childs.len - 1);
+            }
+
+            fn isFull(self: *Node) bool {
+                return self.values.len == order;
             }
         };
     };
