@@ -137,10 +137,12 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                 if (!self.isLeaf()) {
                     right_node.childs.appendSlice(self.childs.slice()[separatorIndex + 1 ..]) catch unreachable;
                     self.childs.resize(separatorIndex + 1) catch unreachable;
+
+                    right_node.updateChildsUpreference();
                 }
 
                 if (self.parent) |parent| {
-                    right_node.parent = self.parent;
+                    right_node.parent = parent;
                     return parent.insertChild(separator, right_node);
                 } else {
                     return self.split_as_root(separator, right_node);
@@ -157,12 +159,20 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                 right_node.parent = self;
                 left_node.parent = self;
 
+                left_node.updateChildsUpreference();
+
                 self.values.resize(0) catch unreachable;
                 self.values.append(separator) catch unreachable;
 
                 self.childs.resize(0) catch unreachable;
                 self.childs.append(left_node) catch unreachable;
                 self.childs.append(right_node) catch unreachable;
+            }
+
+            fn updateChildsUpreference(self: *Node) void {
+                for (self.childs.slice()) |child| {
+                    child.parent = self;
+                }
             }
 
             pub fn insertChild(self: *Node, separator: T, right_node: *Node) Error!void {
@@ -225,9 +235,9 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                         },
                         Comparison.Greater => {},
                     }
+                } else {
+                    return self.lastChild().contains(element);
                 }
-
-                return self.lastChild().contains(element);
             }
 
             fn isLeaf(self: *Node) bool {
