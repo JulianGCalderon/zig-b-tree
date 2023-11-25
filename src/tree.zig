@@ -135,14 +135,14 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                 if (self.parent) |parent| {
                     return parent.insertChild(separator, right_node);
                 } else {
-                    return self.split_root(separator, right_node);
+                    return self.split_as_root(separator, right_node);
                 }
             }
 
             /// A new self node will be cloned from self, and the current node
             /// will behave as parent of both subnodes, with the given
             /// separator.
-            pub fn split_root(self: *Node, separator: T, right_node: *Node) Error!void {
+            pub fn split_as_root(self: *Node, separator: T, right_node: *Node) Error!void {
                 const left_node = try Node.init(self.allocator, self.comparator);
                 left_node.* = self.*;
 
