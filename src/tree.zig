@@ -169,6 +169,9 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                 self.childs.append(right_node) catch unreachable;
             }
 
+            /// After splitting, the child upreferences will outdated. Loops
+            /// through the childs of the current node and updates their parent
+            /// reference to the current node.
             fn updateChildsUpreference(self: *Node) void {
                 for (self.childs.slice()) |child| {
                     child.parent = self;
