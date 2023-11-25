@@ -142,3 +142,23 @@ test "Can overflow non leaf root" {
     };
     try insertAndSearchAll(&tree, elements[0..]);
 }
+
+// test "Can insert many many nodes" {
+//     var tree = try BTree.init(allocator, comparator);
+//     defer tree.deinit();
+//
+//     const elements = try allocator.alloc(isize, 100);
+//     defer allocator.free(elements);
+//
+//     for (elements[0..25], 0..) |_, index| {
+//         const isize_index: isize = @intCast(index);
+//         elements[index] = isize_index * 10;
+//     }
+//
+//     for (elements[25..], 25..) |_, index| {
+//         const isize_index: isize = @intCast(index);
+//         elements[index] = (isize_index * 5) + 2;
+//     }
+//
+//     try insertAndSearchAll(&tree, elements[0..]);
+// }
