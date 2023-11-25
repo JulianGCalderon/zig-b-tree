@@ -143,22 +143,24 @@ test "Can overflow non leaf root" {
     try insertAndSearchAll(&tree, elements[0..]);
 }
 
-test "Can insert many many nodes" {
+test "Splitting updates childs upreference" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
 
-    const elements = try allocator.alloc(isize, 100);
-    defer allocator.free(elements);
-
-    for (elements[0..25], 0..) |_, index| {
-        const isize_index: isize = @intCast(index);
-        elements[index] = isize_index * 10;
-    }
-
-    for (elements[25..], 25..) |_, index| {
-        const isize_index: isize = @intCast(index);
-        elements[index] = (isize_index * 5) + 1;
-    }
-
+    const elements = [_]isize{
+        100,  200,  1000, 1100, 1200,
+        // 1
+        2000, 2100, 2200,
+        // 2
+        3000, 3100,
+        3200,
+        // 3
+        4000, 4100, 4200,
+        // 4
+        5000,
+        5100, 5200,
+        // 5
+        4300, 4400, 4500,
+    };
     try insertAndSearchAll(&tree, elements[0..]);
 }
