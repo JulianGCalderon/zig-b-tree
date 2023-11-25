@@ -164,3 +164,18 @@ test "Splitting updates childs upreference" {
     };
     try insertAndSearchAll(&tree, elements[0..]);
 }
+
+test "Can insert many many nodes" {
+    var tree = try BTree.init(allocator, comparator);
+    defer tree.deinit();
+
+    const elements = try allocator.alloc(isize, 1000);
+    defer allocator.free(elements);
+
+    var random = std.rand.DefaultPrng.init(0);
+    for (elements, 0..) |_, index| {
+        elements[index] = random.random().int(isize);
+    }
+
+    try insertAndSearchAll(&tree, elements[0..]);
+}
