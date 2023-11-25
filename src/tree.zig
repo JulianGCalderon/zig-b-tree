@@ -42,7 +42,7 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
 
         const Node = struct {
             const ValueArray = std.BoundedArray(T, order);
-            const ChildArray = std.BoundedArray(*Node, order);
+            const ChildArray = std.BoundedArray(*Node, order + 1);
 
             allocator: Allocator,
             comparator: Comparator,
@@ -98,6 +98,7 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                         else => {},
                     }
                 }
+
                 self.values.append(element) catch unreachable;
             }
 
@@ -129,10 +130,15 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
 
                 const right_node = try Node.init(self.allocator, self.comparator);
                 right_node.values.appendSlice(self.values.slice()[separatorIndex + 1 ..]) catch unreachable;
-
                 self.values.resize(separatorIndex) catch unreachable;
 
+                if (!self.isLeaf()) {
+                    right_node.childs.appendSlice(self.childs.slice()[separatorIndex + 1 ..]) catch unreachable;
+                    self.childs.resize(separatorIndex + 1) catch unreachable;
+                }
+
                 if (self.parent) |parent| {
+                    right_node.parent = self.parent;
                     return parent.insertChild(separator, right_node);
                 } else {
                     return self.split_as_root(separator, right_node);
@@ -163,17 +169,21 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                         Comparison.Lesser => {
                             self.values.insert(i, separator) catch unreachable;
                             self.childs.insert(i + 1, right_node) catch unreachable;
-                            return;
+                            break;
                         },
                         Comparison.Equal => {
                             unreachable;
                         },
                         Comparison.Greater => {},
                     }
+                } else {
+                    self.values.append(separator) catch unreachable;
+                    self.childs.append(right_node) catch unreachable;
                 }
 
-                self.values.append(separator) catch unreachable;
-                self.childs.append(right_node) catch unreachable;
+                if (self.isFull()) {
+                    try self.split();
+                }
             }
 
             pub fn contains(self: *Node, element: T) bool {

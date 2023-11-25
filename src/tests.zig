@@ -103,20 +103,42 @@ test "Can overflow left child node" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
 
-    const elements = [_]isize{ 0, 10, 20, 30, 40 };
+    const elements = [_]isize{
+        0, 10, 20, 30, 40,
+        // left
+        6, 12, 18,
+    };
     try insertAndSearchAll(&tree, elements[0..]);
-
-    const elements_left = [_]isize{ 6, 12, 18 };
-    try insertAndSearchAll(&tree, elements_left[0..]);
 }
 
 test "Can overflow right child node" {
     var tree = try BTree.init(allocator, comparator);
     defer tree.deinit();
 
-    const elements = [_]isize{ 0, 10, 20, 30, 40 };
+    const elements = [_]isize{
+        0,  10, 20, 30, 40,
+        // right
+        34, 28, 22,
+    };
     try insertAndSearchAll(&tree, elements[0..]);
+}
 
-    const elements_right = [_]isize{ 34, 28, 22 };
-    try insertAndSearchAll(&tree, elements_right[0..]);
+test "Can overflow non leaf root" {
+    var tree = try BTree.init(allocator, comparator);
+    defer tree.deinit();
+
+    const elements = [_]isize{
+        0,  10, 20, 30, 40,
+        // 1
+        6,  12, 18,
+        // 2
+        22, 28,
+        34,
+        // 3
+        38, 42, 46,
+        // 4
+        50,
+        54, 58,
+    };
+    try insertAndSearchAll(&tree, elements[0..]);
 }
