@@ -158,9 +158,22 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
             }
 
             pub fn insertChild(self: *Node, separator: T, right_node: *Node) Error!void {
-                _ = self;
-                _ = right_node;
-                _ = separator;
+                for (self.values.slice(), 0..) |value, i| {
+                    switch (self.comparator(separator, value)) {
+                        Comparison.Lesser => {
+                            self.values.insert(i, separator) catch unreachable;
+                            self.childs.insert(i + 1, right_node) catch unreachable;
+                            return;
+                        },
+                        Comparison.Equal => {
+                            unreachable;
+                        },
+                        Comparison.Greater => {},
+                    }
+                }
+
+                self.values.append(separator) catch unreachable;
+                self.childs.append(right_node) catch unreachable;
             }
 
             pub fn contains(self: *Node, element: T) bool {
