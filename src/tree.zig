@@ -11,6 +11,9 @@ pub const Error = error{
     DuplicateElement,
 } || Allocator.Error;
 
+/// Definición en tiempo de compilación del árbol. El orden del árbol también se
+/// define en timepo de compilación ya que se utilizan arreglos estáticos en los
+/// nodos.
 pub fn BTree(comptime T: type, comptime order: usize) type {
     return struct {
         const Self = @This();
