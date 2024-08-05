@@ -127,7 +127,7 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
             /// Splits the node in two, and inserts the right subnode as sibling
             /// into the parent. The current node will be the left subnode
             ///
-            /// If there is no parent, a new right subnode will be alloced, and
+            /// If there is no parent, a new left subnode will be alloced, and
             /// the current node will behave as parent of both.
             pub fn split(self: *Node) Error!void {
                 const separatorIndex = self.values.len / 2;
@@ -152,7 +152,7 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                 }
             }
 
-            /// A new self node will be cloned from self, and the current node
+            /// A new left node will be cloned from self, and the current node
             /// will behave as parent of both subnodes, with the given
             /// separator.
             pub fn split_as_root(self: *Node, separator: T, right_node: *Node) Error!void {
@@ -172,7 +172,7 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
                 self.childs.append(right_node) catch unreachable;
             }
 
-            /// After splitting, the child upreferences will outdated. Loops
+            /// After splitting, the child upreferences will be outdated. Loops
             /// through the childs of the current node and updates their parent
             /// reference to the current node.
             fn updateChildsUpreference(self: *Node) void {
