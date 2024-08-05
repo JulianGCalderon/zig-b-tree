@@ -35,6 +35,10 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
             return self.root.insert(element);
         }
 
+        pub fn remove(self: *Self, element: T) !void {
+            return self.root.remove(element);
+        }
+
         pub fn contains(self: *Self, element: T) bool {
             return self.root.contains(element);
         }
@@ -201,6 +205,18 @@ pub fn BTree(comptime T: type, comptime order: usize) type {
 
                 if (self.isFull()) {
                     try self.split();
+                }
+            }
+
+            pub fn remove(self: *Node, element: T) Error!void {
+                for (self.values.slice(), 0..) |value, i| {
+                    switch (self.comparator(element, value)) {
+                        Comparison.Lesser => {},
+                        Comparison.Equal => {
+                            self.values.resize(i) catch unreachable;
+                        },
+                        Comparison.Greater => {},
+                    }
                 }
             }
 

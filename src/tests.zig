@@ -15,10 +15,14 @@ fn comparator(e1: isize, e2: isize) btree.Comparison {
     return btree.Comparison.Equal;
 }
 
-fn insertAndSearchAll(tree: *BTree, elements: []const isize) !void {
+fn insertAll(tree: *BTree, elements: []const isize) !void {
     for (elements) |element| {
         try tree.insert(element);
     }
+}
+
+fn insertAndSearchAll(tree: *BTree, elements: []const isize) !void {
+    try insertAll(tree, elements);
     for (elements) |element| {
         try testing.expect(tree.contains(element));
     }
@@ -178,4 +182,32 @@ test "Can insert many many nodes" {
     }
 
     try insertAndSearchAll(&tree, elements[0..]);
+}
+
+test "Can delete last element from tree with single node" {
+    var tree = try BTree.init(allocator, comparator);
+    defer tree.deinit();
+
+    const elements = [_]isize{ 0, 1, 2, 3 };
+    try insertAll(&tree, elements[0..]);
+    try tree.remove(3);
+
+    try testing.expect(tree.contains(0));
+    try testing.expect(tree.contains(1));
+    try testing.expect(tree.contains(2));
+    try testing.expect(!tree.contains(3));
+}
+
+test "Can delete middle element from tree with single node" {
+    var tree = try BTree.init(allocator, comparator);
+    defer tree.deinit();
+
+    const elements = [_]isize{ 0, 1, 2, 3 };
+    try insertAll(&tree, elements[0..]);
+    try tree.remove(1);
+
+    try testing.expect(tree.contains(0));
+    try testing.expect(!tree.contains(1));
+    try testing.expect(tree.contains(2));
+    try testing.expect(tree.contains(3));
 }
